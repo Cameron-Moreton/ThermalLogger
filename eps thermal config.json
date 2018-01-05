@@ -1,0 +1,39 @@
+{
+    "devices":
+    {
+        "EPS":
+        {
+            "Address":"0x2B",
+
+            "TLE codes":
+            {
+                "VPCM3V3":"0xE200",
+                "IPCM3V3":"0xE204",
+                "VPCM5V":"0xE210",
+                "IPCM5V":"0xE214",
+                "VPCMVBAT":"0xE220",
+                "IPCMVBAT":"0xE224",
+                "VPCM12V":"0xE230",
+                "IPCM12V":"0xE234"
+            }
+        },
+
+        "Battery":
+        {
+            "Address":"0x2A",
+
+            "TLE codes":
+            {
+                "VPCM3V3":"0xE200",
+                "IPCM3V3":"0xE204",
+                "VPCM5V":"0xE210",
+                "IPCM5V":"0xE214",
+                "VPCMVBAT":"0xE220",
+                "IPCMVBAT":"0xE224",
+                "VPCM12V":"0xE230",
+                "IPCM12V":"0xE234"
+            }
+        }
+    }
+
+}

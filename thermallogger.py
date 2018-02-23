@@ -1,17 +1,17 @@
-import json 
-import pandas as pd
-from aardvark.aardvark_py3 import (aa_find_devices_ext,
-                                  AA_PORT_NOT_FREE,
-                                  aa_open, aa_i2c_pullup,
-                                  AA_I2C_PULLUP_BOTH)
-
-from aardvark.wrapper import AardvarkI2CWriteRead
+import json
 import sys
 import time
+import pandas as pd
+from aardvark.aardvark_py3 import (aa_find_devices_ext,
+                                   AA_PORT_NOT_FREE,
+                                   aa_open, aa_i2c_pullup,
+                                   AA_I2C_PULLUP_BOTH)
+
+from aardvark.wrapper import AardvarkI2CWriteRead
 from keithley import Keithley, KeithleyNoConnection, KeithleyBadData
 
 def create_aardvark_list():
-    
+
     aardvark_list = {}
 
     (num, ports, ids) = aa_find_devices_ext(16, 16)
@@ -19,21 +19,21 @@ def create_aardvark_list():
     for i in range(num):
         port      = ports[i]
         unique_id = ids[i]
- 
+
         inuse = "(avail)"
-        if (port & AA_PORT_NOT_FREE):
+        if port & AA_PORT_NOT_FREE:
             inuse = "(in-use)"
             port  = port & ~AA_PORT_NOT_FREE
 
         if inuse == "(avail)":
             aardvark_list.update({port:unique_id})
-    
+
     return aardvark_list
 
 def create_single_transaction(address, tlm, name):
     transaction = {
         'address' : address,
-        'cmd' : 0x10, # get tlm command 
+        'cmd' : 0x10, # get tlm command
         'data' : tlm,
         'delay' : 25,
         'bytes_to_read' : 2,
@@ -54,7 +54,7 @@ def generate_transactions(config):
             transaction = create_single_transaction(address, int(value, 16), name)
             device_transactions.update({('transaction' + str(transaction_number)) :transaction})
             transaction_number = transaction_number + 1
-        
+
         all_transactions.update(device_transactions)
 
     return all_transactions
@@ -73,14 +73,13 @@ def create_instances(aardvark_list):
         handle = open_aardvark(port)
         keithley_channels_string = input('What channels are connected to this product e.g 1 2 3 5')
         keithley_channels = map(int, keithley_channels_string.split())
-        instance = {serial_number:
-        {
+        instance = {serial_number:{
             "handle": handle,
             "Transactions": transaction_list,
             "keithley channels": keithley_channels
         }}
         instances.update(instance)
-    
+
     return instances
 
 def build_df(instance_list):
@@ -94,7 +93,7 @@ def build_df(instance_list):
             tlm_name = transaction["name"]
             column_name = (serial_number, tlm_name)
             column_list.append(column_name)
-        
+
         for channel in keithley_channel_list:
             channel_number = str(channel)
             column_name = (serial_number, channel_number)
@@ -103,15 +102,15 @@ def build_df(instance_list):
     for channel in temperature_channels:
         channel_number = str(channel)
         column_name = ('Temperature', channel_number)
-        column_list.append(column_name) 
-    
+        column_list.append(column_name)
+
     df = pd.DataFrame(columns=column_list)
     df.columns = pd.MultiIndex.from_tuples(df.columns)
     return df
 
 def run_tlm_log(df, instance_list, keithley):
-    ind = len(df) + 1 
-    temperature_channels  = [19, 20]
+    ind = len(df) + 1
+    temperature_channels = [19, 20]
     for instance in instance_list:
         serial_number = str(instance)
         handle = instance_list[instance]['handle']
@@ -121,23 +120,26 @@ def run_tlm_log(df, instance_list, keithley):
             tlm_name = transaction["name"]
             column_name = (serial_number, tlm_name)
             data_read, bytes_read, bytes_written = AardvarkI2CWriteRead(handle, transaction)
-            data = byte_to_word(data_read)
+            try:
+                data = byte_to_word(data_read)
+            except IndexError:
+                data = "0"
             df.set_value(ind, column_name, data)
-        
+
         for channel in keithley_channel_list:
             channel_number = str(channel)
             column_name = (serial_number, channel_number)
             data = keithley.channel[channel_number].getVoltageDC()
             df.set_value(ind, column_name, data)
-    
+
     for channel in temperature_channels:
         channel_number = str(channel)
         column_name = ('Temperature', channel_number)
         data = keithley.channel[channel_number].getTemperature()
         df.set_value(ind, column_name, data)
-         
-def byte_to_word(bytes):
-    return(bytes[0]<<8 |bytes[1])
+
+def byte_to_word(bytes_):
+    return(bytes_[0]<<8 |bytes_[1])
 
 def main():
 
@@ -145,7 +147,7 @@ def main():
     all_instances = create_instances(aardvark_list)
     df = build_df(all_instances)
     sleeptime = 10.0
-    keithley_comm =  input('com')
+    keithley_comm = input('com')
     keithley = Keithley(comm=keithley_comm)
     while True:
         try:
@@ -159,4 +161,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
